@@ -1,12 +1,13 @@
-importScripts("https://cdn.rawgit.com/sigiljs/trapezoid/master/trapezoid.js")
+importScripts("trapezoid.js")
 
-var app = trapzoid();
+var app = trapezoid();
 
 app.get("/",function(req,res){
   res.send("you made it to root! ")
 })
 
-self.addEventListener('install', function(event) {
+self.addEventListener('install', function(event,options) {
+  console.log(event);
   console.log("Installing Service Worker");
 });
 
