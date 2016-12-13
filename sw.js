@@ -1,16 +1,15 @@
+importScripts("https://cdn.rawgit.com/sigiljs/trapezoid/master/trapezoid.js")
+
+var app = trapzoid();
+
+app.get("/",function(req,res){
+  res.send("you made it to root! ")
+})
+
 self.addEventListener('install', function(event) {
   console.log("Installing Web Worker");
 });
 
 self.addEventListener('fetch', function(event) {
-  var init = {
-    status: 200,
-    statusText: "OK",
-    headers: {'Content-Type': 'text/plain'}
-  };
-
-  var response = new Response("Goodbye World!", init);
-  event.respondWith(
-    response
-  );
+  app.process(event);
 });
