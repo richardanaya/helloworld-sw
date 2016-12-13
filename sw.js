@@ -7,7 +7,7 @@ app.get("/",function(req,res){
 })
 
 self.addEventListener('install', function(event) {
-  console.log("Installing Web Worker");
+  console.log("Installing Service Worker");
 });
 
 self.addEventListener('fetch', function(event) {
