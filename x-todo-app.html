@@ -1,0 +1,175 @@
+<script src="lib/kamea.min.js"></script>
+<script src="lib/sigil.min.js"></script>
+<script src="lib/pouchdb.min.js"></script>
+<link rel="stylesheet" type="text/css" href="todo.css">
+<template id="x-todo-app">
+	<section class="todoapp">
+		<header class="header">
+			<h1>todos</h1>
+			<input class="new-todo" placeholder="What needs to be done?" autofocus :value=":state.text" @keydown="$action('input_key',$event)">
+		</header>
+		<!-- This section should be hidden by default and shown when there are todos -->
+		<section class="main">
+			<input class="toggle-all" type="checkbox" :checked=":state.toggle_all" @click="$action('toggle_all')">
+			<label for="toggle-all">Mark all as complete</label>
+			<ul class="todo-list">
+				<!-- These are here just to show the structure of the list items -->
+				<!-- List items should get the class `editing` when editing and `completed` when marked as completed -->
+				<li %for="todo in getItems()" #class="$classNames({completed: todo.completed})">
+					<div class="view">
+						<input class="toggle" type="checkbox" @click="$action('toggle_todo',$index)" :checked="todo.completed">
+						<label>{{todo.text}}</label>
+						<button class="destroy" @click="$action('delete_todo',$index)"></button>
+					</div>
+					<input class="edit" value="Create a TodoMVC template">
+				</li>
+			</ul>
+		</section>
+		<!-- This footer should hidden by default and shown when there are todos -->
+		<footer class="footer">
+			<!-- This should be `0 items left` by default -->
+			<span class="todo-count"><strong>{{remaining()}}</strong> item left</span>
+			<!-- Remove this if you don't implement routing -->
+			<ul class="filters">
+				<li>
+					<a #class="$classNames({selected : :state.mode=='all'})" style="cursor:pointer" @click="$action('change_mode','all')">All</a>
+				</li>
+				<li>
+					<a #class="$classNames({selected : :state.mode=='active'})" style="cursor:pointer" @click="$action('change_mode','active')">Active</a>
+				</li>
+				<li>
+					<a #class="$classNames({selected : :state.mode=='completed'})" style="cursor:pointer" @click="$action('change_mode','completed')">Completed</a>
+				</li>
+			</ul>
+			<!-- Hidden if no completed items are left ↓ -->
+			<button class="clear-completed" @click="$action('clear_completed')">Clear completed</button>
+		</footer>
+	</section>
+	<footer class="info">
+		<p>Double-click to edit a todo</p>
+		<!-- Change this out with your name and url ↓ -->
+		<p>Created by <a href="https://github.com/richardanaya/sigil/">Sigil.js</a></p>
+		<p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
+	</footer>
+</template>
+<script>
+  sigil("x-todo-app",["state"], {
+    lifecycle:{
+      created: function(){
+        var store = new Kamea();
+        var domain = store.domain("todo",{
+          toggle_all:false,
+          mode: "all",
+          todos: [
+            {
+              text:"Taste JavaScript",
+              completed: true
+            },
+            {
+              text:"Buy a unicorn",
+              completed: false
+            }
+          ]
+        })
+        domain.action('toggle_all',function(state){
+          var newToggleAll = !state.toggle_all;
+          state.todos.forEach(function(x){
+            x.set("completed",newToggleAll);
+          })
+          state.set("toggle_all",newToggleAll);
+        })
+        domain.action('input_key',function(state,action){
+          if(action.data.key == "Enter" && action.data.target.value !== ""){
+            state.todos.push({
+              text:action.data.target.value,
+              completed: false
+            })
+            action.data.target.value = "";
+          }
+        })
+        domain.action('change_mode',function(state,action){
+          state.set("mode",action.data)
+        })
+        domain.action('toggle_todo',function(state,action){
+          var todo = state.todos[action.data];
+          todo.set("completed",!todo.completed);
+        })
+        domain.action('delete_todo',function(state,action){
+          state.todos.splice(action.data,1);
+        })
+        domain.action('clear_completed',function(state,action){
+          state.set("todos",state.todos.filter(function(x){return !x.completed}));
+        })
+
+				var db = new PouchDB('todos');
+				var stateRev = undefined;
+				var saving = false;
+				var stateSaveQueue = [];
+				function saveState(s){
+					if(saving){
+						stateSaveQueue.push(s);
+						return;
+					}
+					saving = true;
+					db.put({
+						_id:"todos",
+						state:s,
+						_rev:stateRev
+					})
+					.then(function(response){
+						stateRev = response.rev;
+						saving = false;
+						if(stateSaveQueue.length>0){
+							saveState(stateSaveQueue.pop());
+						}
+					})
+					.catch(function(err){
+						saving = false;
+						console.log(err);
+					})
+				}
+
+        var _this = this;
+        function render(){
+          _this.state = store.state.todo;
+					saveState(store.state);
+        }
+        store.subscribe(render);
+
+				db.get("todos").then(function(response){
+					//if we have existing state
+					stateRev = response._rev;
+					store.setState(response.state);
+				}).catch(function(err){
+					//not found, render default
+					render();
+				})
+
+        this.addEventListener("action",function(e){
+          store.dispatch(e.detail);
+        })
+      }
+    },
+    methods:{
+      getItems:function(){
+        if(this.state){
+          if(this.state.mode == "all"){
+              return this.state.todos;
+          }
+          else if(this.state.mode == "completed"){
+              return this.state.todos.filter(function(x){return x.completed;});
+          }
+          else if(this.state.mode == "active"){
+              return this.state.todos.filter(function(x){return !x.completed;});
+          }
+        }
+      },
+      remaining:function(){
+        if(this.state){
+          return this.state.todos.filter(function(x){return !x.completed;}).length;
+        }
+        return 0;
+      }
+    }
+  });
+</script>
