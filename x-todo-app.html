@@ -19,7 +19,7 @@
 					<div class="view">
 						<input class="toggle" type="checkbox" @click="$action('toggle_todo',$index)" :checked="todo.completed">
 						<label>{{todo.text}}</label>
-						<button class="destroy" @click="$action('delete_todo',$index)"></button>
+						<button class="destroy" @click="$action('delete_todo',$index)">x</button>
 					</div>
 					<input class="edit" value="Create a TodoMVC template">
 				</li>
